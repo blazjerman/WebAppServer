@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Document</title>
+</head>
+
+<body>
+
+    <div id="container">
+
+        <h1>Login</h1>
+
+        <br><br>
+
+        <label><b>Username</b></label>
+        <input id="username" type="text" placeholder="Enter Username" name="uname" required>
+
+        <br><br>
+
+        <label><b>Password</b></label>
+        <input id="password" type="password" placeholder="Enter Password" name="psw" required>
+
+        <br><br>
+
+        <button type="submit" onclick="login()">Login</button>
+
+        <script>
+
+
+            function login() {
+
+                const username = document.getElementById("username").value
+                const password = document.getElementById("password").value
+
+                runOnBackEnd("login", {username:username, password:password}).then(async data => {
+
+                    document.getElementById("container").innerHTML = "Logged in! " + JSON.stringify(data)
+
+                })
+
+            }
+
+
+
+
+        </script>
+
+    </div>
+
+</body>
+</html>
+
+<script src="script.js"></script>
+
