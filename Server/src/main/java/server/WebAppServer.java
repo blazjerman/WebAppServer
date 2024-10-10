@@ -30,7 +30,9 @@ public class WebAppServer {
 
     static final String API_ROUT = "/api";
     static final String ROUT_SEPARATOR = "/";
-    private final String BACK_END_GREETING = "Hello from BackEnd.";
+    private static final String BACK_END_GREETING = "Hello from BackEnd.";
+    private static final String FRONT_END_SCRIPT = "script.js";
+
 
     private final Timer timer = new Timer();
 
@@ -83,20 +85,13 @@ public class WebAppServer {
     // Front end //
 
     private void initFrontend(HttpServer server) {
+
         try {
             Path resourceDir = Paths.get(Objects.requireNonNull(WebAppServer.class.getResource(frontEndResources)).toURI());
+
             try (Stream<Path> paths = Files.walk(resourceDir)) {
                 paths.filter(Files::isRegularFile).forEach(path -> {
-                    String contextPath = ROUT_SEPARATOR + resourceDir.relativize(path).toString().replace(File.separator, ROUT_SEPARATOR);
-                    server.createContext(FilenameUtils.removeExtension(contextPath), exchange -> {
-                        if (rateLimiter.tryAcquire()) {
-                            serveResource(exchange, path);
-                            rateLimiter.release();
-                        } else {
-                            exchange.sendResponseHeaders(429, -1);
-                        }
-
-                    });
+                    serveResource(server, path);
                 });
             } catch (IOException e) {
                 System.err.println("Error loading frontend file: " + e.getMessage());
@@ -104,6 +99,14 @@ public class WebAppServer {
         } catch (URISyntaxException | NullPointerException e) {
             System.err.println("Error loading frontend resources: " + e.getMessage());
         }
+
+        try {
+            Path path = Paths.get(Objects.requireNonNull(WebAppServer.class.getClassLoader().getResource(FRONT_END_SCRIPT)).toURI());
+            serveResource(server, path);
+        } catch (URISyntaxException e) {
+            System.err.println("Error loading " + FRONT_END_SCRIPT + " resources: " + e.getMessage());
+        }
+
     }
 
 
@@ -115,7 +118,7 @@ public class WebAppServer {
                 try {
                     switch (exchange.getRequestMethod()) {
                         case "GET":
-                            get(exchange, BACK_END_GREETING);
+                            get(exchange);
                             break;
                         case "POST":
                             post(exchange);
@@ -133,23 +136,33 @@ public class WebAppServer {
         });
     }
 
-    private void serveResource(HttpExchange exchange, Path path) throws IOException {
+    private void serveResource(HttpServer server, Path path) {
 
-        try (InputStream resourceStream = Files.newInputStream(path)) {
-            byte[] response = resourceStream.readAllBytes();
-            exchange.getResponseHeaders().set("Content-Type", "text/html");
-            exchange.sendResponseHeaders(200, response.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response);
+        server.createContext(FilenameUtils.removeExtension(ROUT_SEPARATOR + path.getFileName()), exchange -> {
+
+            if (rateLimiter.tryAcquire()) {
+
+                try (InputStream resourceStream = Files.newInputStream(path)) {
+                    byte[] response = resourceStream.readAllBytes();
+                    exchange.getResponseHeaders().set("Content-Type", "text/html");
+                    exchange.sendResponseHeaders(200, response.length);
+                    try (OutputStream os = exchange.getResponseBody()) {
+                        os.write(response);
+                    }
+                }
+                rateLimiter.release();
+
+            } else {
+                exchange.sendResponseHeaders(429, -1);
             }
-        }
+        });
 
     }
 
 
-    private void get(HttpExchange exchange, String response) throws IOException {
-        exchange.sendResponseHeaders(200, response.length());
-        exchange.getResponseBody().write(response.getBytes());
+    private void get(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(200, BACK_END_GREETING.length());
+        exchange.getResponseBody().write(BACK_END_GREETING.getBytes());
         exchange.getResponseBody().close();
     }
 

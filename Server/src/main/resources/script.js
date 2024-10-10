@@ -52,7 +52,12 @@ async function runOnBackEnd(methodName, data = {}) {
     }
 }
 
+
 // Automatically update the session time periodically
 setInterval(() => {
     runOnBackEnd("updateSession", {}).then(r => {});
 }, updateSessionTime * 1000);
+
+
+// Run when page is loaded
+runOnBackEnd("updateSession", {}).then(r => {});
